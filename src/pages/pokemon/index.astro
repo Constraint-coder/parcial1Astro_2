@@ -1,0 +1,268 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Pokédex" description="Lista completa de Pokémon">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="page-header text-2xl sm:text-3xl">Pokédex</h1>
+        <p class="text-white/40 font-body text-sm">Explora todos los Pokémon disponibles</p>
+      </div>
+      <div class="flex gap-3">
+        <input type="text" id="search-input" placeholder="Buscar Pokémon..."
+          class="bg-poke-gray border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-poke-accent/50 font-body w-56 transition-colors"/>
+        <select id="limit-select"
+          class="bg-poke-gray border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-poke-accent/50 font-body cursor-pointer">
+          <option value="20">20</option>
+          <option value="40">40</option>
+          <option value="80">80</option>
+          <option value="151" selected>151</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div id="axios-status" class="hidden items-center gap-3 mb-6 px-4 py-3 rounded-xl bg-poke-gray border border-white/5 text-xs font-body">
+      <div class="w-2 h-2 rounded-full bg-poke-accent animate-pulse"></div>
+      <span id="axios-msg" class="text-white/50"></span>
+      <span id="axios-progress" class="ml-auto text-poke-accent font-display text-xs"></span>
+    </div>
+
+    <!-- Loading skeletons -->
+    <div id="loading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      {Array(24).fill(0).map(() => (
+        <div class="skeleton rounded-2xl aspect-square"></div>
+      ))}
+    </div>
+
+    <!-- Grid -->
+    <div id="pokemon-grid" class="hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"></div>
+
+    <!-- No results -->
+    <div id="no-results" class="hidden text-center py-20">
+      <div class="text-6xl mb-4">🔍</div>
+      <p class="font-display text-xs text-white/40">No se encontraron Pokémon</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error-state" class="hidden text-center py-20">
+      <div class="text-6xl mb-4">💔</div>
+      <p class="font-display text-xs text-poke-red mb-2">Error de conexión</p>
+      <p class="text-white/40 text-sm font-body mb-6" id="error-msg"></p>
+      <button onclick="retryLoad()" class="poke-btn-primary">🔄 Reintentar</button>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" class="flex items-center justify-center gap-4 mt-10 hidden">
+      <button id="prev-btn" class="poke-btn-secondary opacity-50" disabled>← Anterior</button>
+      <span id="page-info" class="text-white/40 text-sm font-body"></span>
+      <button id="next-btn" class="poke-btn-secondary">Siguiente →</button>
+    </div>
+  </div>
+</Layout>
+
+<!-- Axios desde CDN -->
+<script src="https://cdn.jsdelivr.net/npm/axios@1.7.0/dist/axios.min.js"></script>
+
+<script>
+  const BASE_URL = 'https://pokeapi.co/api/v2';
+  let allPokemon = [];
+  let currentPage = 1;
+  let limitValue = 151;
+  let searchQuery = '';
+  let axiosInstance = null;
+
+  const getEl = function(id) { return document.getElementById(id); };
+
+  function buildAxiosInstance() {
+    const instance = window.axios.create({
+      baseURL: BASE_URL,
+      timeout: 12000,
+      headers: { 'Accept': 'application/json' }
+    });
+    instance.interceptors.request.use(function(config) {
+      console.log('🌐 [Axios Request] ' + (config.url || ''));
+      return config;
+    }, function(error) {
+      return Promise.reject(error);
+    });
+    return instance;
+  }
+
+  function getAxios() {
+    if (!axiosInstance) axiosInstance = buildAxiosInstance();
+    return axiosInstance;
+  }
+
+  async function apiGetList(limit, offset) {
+    const response = await getAxios().get('/pokemon', { params: { limit: limit, offset: offset || 0 } });
+    return response.data;
+  }
+
+  async function apiGetPokemon(urlOrId) {
+    const isUrl = typeof urlOrId === 'string' && urlOrId.indexOf('http') === 0;
+    const path = isUrl ? urlOrId : '/pokemon/' + urlOrId;
+    const response = await getAxios().get(path);
+    return response.data;
+  }
+
+  async function apiGetBatch(urls) {
+    const settled = await Promise.allSettled(urls.map(function(u) { return apiGetPokemon(u); }));
+    const results = [];
+    for (let i = 0; i < settled.length; i++) {
+      if (settled[i].status === 'fulfilled') results.push(settled[i].value);
+    }
+    return results;
+  }
+
+  const TYPE_COLORS = {
+    fire:'#ff6b35', water:'#4fc3f7', grass:'#81c784', electric:'#ffd54f',
+    psychic:'#f48fb1', ice:'#80deea', dragon:'#9575cd', dark:'#616161',
+    fairy:'#f8bbd0', fighting:'#ff8a65', poison:'#ce93d8', ground:'#ffcc80',
+    flying:'#b3e5fc', bug:'#dce775', rock:'#bcaaa4', ghost:'#9575cd',
+    steel:'#b0bec5', normal:'#eeeeee',
+  };
+
+  function padId(id) { return String(id).padStart(4, '0'); }
+
+  function getFavorites() {
+    try { return JSON.parse(localStorage.getItem('pokemon-favorites') || '[]'); }
+    catch(e) { return []; }
+  }
+
+  function toggleFav(id, btn) {
+    const favs = getFavorites();
+    const idx = favs.indexOf(id);
+    if (idx === -1) { favs.push(id); btn.textContent = '⭐'; }
+    else { favs.splice(idx, 1); btn.textContent = '☆'; }
+    localStorage.setItem('pokemon-favorites', JSON.stringify(favs));
+  }
+  window.toggleFav = toggleFav;
+
+  function createCard(p) {
+    const fav = getFavorites().includes(p.id);
+    const tc = TYPE_COLORS[p.types[0]] || '#9e9e9e';
+    return '<a href="/pokemon/' + p.id + '" class="poke-card group relative overflow-hidden cursor-pointer block">' +
+      '<div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"' +
+      ' style="background:radial-gradient(circle at 50% 80%,' + tc + '18 0%,transparent 70%)"></div>' +
+      '<button onclick="event.preventDefault();toggleFav(' + p.id + ',this)"' +
+      ' class="absolute top-2 right-2 z-10 w-7 h-7 flex items-center justify-center rounded-full transition-all hover:scale-110 ' + (fav ? 'opacity-100' : 'opacity-0 group-hover:opacity-60') + '"' +
+      ' title="Favorito">' + (fav ? '⭐' : '☆') + '</button>' +
+      '<div class="flex flex-col items-center pb-1">' +
+      '<div class="text-white/20 font-display text-[9px] self-start mb-2">#' + padId(p.id) + '</div>' +
+      '<div class="relative w-20 h-20 flex items-center justify-center mb-2">' +
+      '<div class="absolute inset-0 rounded-full opacity-20 group-hover:opacity-40 transition-opacity"' +
+      ' style="background:radial-gradient(' + tc + ',transparent)"></div>' +
+      '<img src="' + p.image + '" alt="' + p.name + '"' +
+      ' class="w-16 h-16 object-contain relative z-10 group-hover:scale-110 transition-transform duration-300" loading="lazy"/>' +
+      '</div>' +
+      '<div class="font-body font-medium text-xs text-white capitalize text-center mb-2">' + p.name + '</div>' +
+      '<div class="flex gap-1 flex-wrap justify-center">' +
+      p.types.map(function(t) { return '<span class="type-badge type-' + t + ' text-[9px] px-2 py-0.5">' + t + '</span>'; }).join('') +
+      '</div></div></a>';
+  }
+
+  function renderFiltered() {
+    const grid      = getEl('pokemon-grid');
+    const noResults = getEl('no-results');
+    const pagination = getEl('pagination');
+    const pageInfo  = getEl('page-info');
+    const prevBtn   = getEl('prev-btn');
+    const nextBtn   = getEl('next-btn');
+
+    const q = searchQuery.toLowerCase();
+    const filtered = allPokemon.filter(function(p) {
+      return p.name.includes(q) || String(p.id).includes(q);
+    });
+    const perPage = 60;
+    const total = Math.ceil(filtered.length / perPage);
+    const page = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+
+    grid.innerHTML = page.map(createCard).join('');
+
+    const empty = filtered.length === 0;
+    noResults.classList.toggle('hidden', !empty);
+    grid.classList.toggle('hidden', empty);
+
+    if (total > 1) {
+      pagination.classList.remove('hidden');
+      pageInfo.textContent = 'Página ' + currentPage + ' de ' + total + ' (' + filtered.length + ' Pokémon)';
+      prevBtn.disabled = currentPage === 1;
+      nextBtn.disabled = currentPage === total;
+      prevBtn.classList.toggle('opacity-50', currentPage === 1);
+      nextBtn.classList.toggle('opacity-50', currentPage === total);
+    } else {
+      pagination.classList.add('hidden');
+    }
+  }
+  window.renderFiltered = renderFiltered;
+
+  async function loadPokemon() {
+    allPokemon = [];
+    const grid      = getEl('pokemon-grid');
+    const loadingEl = getEl('loading');
+    const errorState = getEl('error-state');
+    const noResults = getEl('no-results');
+
+    loadingEl.classList.remove('hidden');
+    grid.classList.add('hidden');
+    errorState.classList.add('hidden');
+    noResults.classList.add('hidden');
+
+    try {
+      const listData = await apiGetList(limitValue, 0);
+      const urls = listData.results.map(function(r) { return r.url; });
+
+      loadingEl.classList.add('hidden');
+      grid.classList.remove('hidden');
+
+      const batchSize = 20;
+      for (let i = 0; i < urls.length; i += batchSize) {
+        const batch = urls.slice(i, i + batchSize);
+        const details = await apiGetBatch(batch);
+        const summaries = details.map(function(d) {
+          return {
+            id:    d.id,
+            name:  d.name,
+            image: d.sprites.other['official-artwork'].front_default || d.sprites.front_default,
+            types: d.types.map(function(t) { return t.type.name; })
+          };
+        });
+        Array.prototype.push.apply(allPokemon, summaries);
+        renderFiltered();
+      }
+    } catch(err) {
+      loadingEl.classList.add('hidden');
+      grid.classList.add('hidden');
+      const errorState2 = getEl('error-state');
+      const errorMsg = getEl('error-msg');
+      errorState2.classList.remove('hidden');
+      errorMsg.textContent = err.message || 'No se pudo conectar con la PokeAPI.';
+    }
+  }
+  window.retryLoad = loadPokemon;
+
+  getEl('search-input').addEventListener('input', function(e) {
+    searchQuery = e.target.value;
+    currentPage = 1;
+    renderFiltered();
+  });
+
+  getEl('limit-select').addEventListener('change', function(e) {
+    limitValue = parseInt(e.target.value);
+    currentPage = 1;
+    loadPokemon();
+  });
+
+  getEl('prev-btn').addEventListener('click', function() { currentPage--; renderFiltered(); window.scrollTo({top:0,behavior:'smooth'}); });
+  getEl('next-btn').addEventListener('click', function() { currentPage++; renderFiltered(); window.scrollTo({top:0,behavior:'smooth'}); });
+
+  function init() {
+    if (window.axios) { loadPokemon(); }
+    else { setTimeout(init, 100); }
+  }
+  init();
+</script>

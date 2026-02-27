@@ -1,0 +1,135 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden min-h-[90vh] flex items-center">
+    <!-- Background effects -->
+    <div class="absolute inset-0 bg-grid-pattern bg-grid opacity-30 pointer-events-none"></div>
+    <div class="absolute top-20 right-10 w-96 h-96 rounded-full opacity-10 animate-spin-slow pointer-events-none" 
+         style="background: conic-gradient(from 0deg, #FF1744, #FFD600, #00B0FF, #FF1744); filter: blur(40px)"></div>
+    <div class="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-5 pointer-events-none"
+         style="background: radial-gradient(#FF1744, transparent); filter: blur(40px)"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
+      <div class="grid lg:grid-cols-2 gap-16 items-center">
+        
+        <!-- Left content -->
+        <div class="animate-slide-in">
+          <div class="inline-flex items-center gap-2 bg-poke-red/10 border border-poke-red/20 rounded-full px-4 py-1.5 mb-6">
+            <span class="w-2 h-2 rounded-full bg-poke-red animate-pulse"></span>
+            <span class="text-poke-red text-xs font-body font-medium">Proyecto Académico - Astro Framework</span>
+          </div>
+          
+          <h1 class="font-display text-3xl sm:text-4xl lg:text-5xl leading-tight mb-6" style="text-shadow: 0 0 60px rgba(255,215,0,0.3)">
+            <span class="text-poke-accent">Pokédex</span>
+            <br/>
+            <span class="text-white/90">App</span>
+          </h1>
+          
+          <p class="text-white/60 font-body text-lg leading-relaxed mb-8 max-w-md">
+            Explora el mundo Pokémon con esta app construida con <span class="text-poke-blue font-medium">Astro Framework</span>, 
+            <span class="text-poke-green font-medium">TailwindCSS</span> y la <span class="text-poke-accent font-medium">PokéAPI</span>.
+          </p>
+
+          <div class="flex flex-wrap gap-4">
+            <a href="/pokemon" class="poke-btn-primary">
+              🔍 Explorar Pokémon
+            </a>
+          </div>
+
+          <!-- Stats -->
+          <div class="grid grid-cols-3 gap-4 mt-12 pt-8 border-t border-white/5">
+            {[
+              { value: '1000+', label: 'Pokémon' },
+              { value: '20', label: 'Ejercicios' },
+              { value: '5', label: 'Páginas' },
+            ].map(stat => (
+              <div class="text-center">
+                <div class="font-display text-xl text-poke-accent">{stat.value}</div>
+                <div class="text-white/40 text-xs mt-1 font-body">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- Right: Pokéball animation -->
+        <div class="hidden lg:flex items-center justify-center relative">
+          <div class="relative w-72 h-72">
+            <!-- Outer glow -->
+            <div class="absolute inset-0 rounded-full animate-pulse-glow" 
+                 style="background: radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 70%)"></div>
+            
+            <!-- Pokéball -->
+            <div class="w-full h-full rounded-full border-4 border-white/10 overflow-hidden relative animate-float shadow-2xl"
+                 style="box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 40px rgba(255,23,68,0.2)">
+              <!-- Top half -->
+              <div class="w-full h-1/2" style="background: linear-gradient(135deg, #FF1744, #D50000)"></div>
+              <!-- Center band -->
+              <div class="w-full h-4 -mt-2 relative z-10 flex items-center justify-center"
+                   style="background: linear-gradient(90deg, #111, #333, #111)">
+                <div class="w-12 h-12 rounded-full bg-white border-4 border-gray-800 shadow-lg z-20 flex items-center justify-center">
+                  <div class="w-4 h-4 rounded-full bg-gray-200 border-2 border-gray-400"></div>
+                </div>
+              </div>
+              <!-- Bottom half -->
+              <div class="w-full" style="height: calc(50% - 8px); background: linear-gradient(135deg, #1a1a1a, #2d2d2d)"></div>
+            </div>
+
+            <!-- Orbiting dots -->
+            <div class="absolute inset-0 animate-spin" style="animation-duration: 6s">
+              <div class="absolute top-2 left-1/2 w-3 h-3 -ml-1.5 rounded-full bg-poke-accent opacity-60"></div>
+            </div>
+            <div class="absolute inset-0 animate-spin" style="animation-duration: 10s; animation-direction: reverse">
+              <div class="absolute bottom-4 right-4 w-2 h-2 rounded-full bg-poke-blue opacity-60"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features section -->
+  <section class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <h2 class="page-header text-xl sm:text-2xl text-center mb-4">Características</h2>
+    <p class="text-white/40 text-center font-body mb-12">Todo lo que necesitas en una sola app</p>
+    
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {[
+        { icon: '📖', title: 'Pokédex Completa', desc: 'Lista todos los Pokémon con imagen, ID y nombre usando la PokéAPI.', href: '/pokemon', color: 'poke-red' },
+        { icon: '🔍', title: 'Detalles', desc: 'Consulta stats, tipos, habilidades y más de cada Pokémon.', href: '/pokemon', color: 'poke-blue' },
+        { icon: '⭐', title: 'Favoritos', desc: 'Guarda tus Pokémon favoritos con persistencia en localStorage.', href: '/favorites', color: 'poke-accent' },
+        { icon: '💻', title: '20 Ejercicios', desc: 'Ejercicios básicos de programación con ejemplos interactivos.', href: '/exercises', color: 'poke-green' },
+      ].map(feat => (
+        <a href={feat.href} class="poke-card group cursor-pointer">
+          <div class="text-4xl mb-4">{feat.icon}</div>
+          <h3 class="font-display text-xs text-white mb-2 group-hover:text-poke-accent transition-colors">{feat.title}</h3>
+          <p class="text-white/50 text-sm font-body leading-relaxed">{feat.desc}</p>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section class="py-12 border-y border-white/5">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="text-center text-white/20 text-xs font-display mb-8">TECNOLOGÍAS UTILIZADAS</p>
+      <div class="flex flex-wrap justify-center items-center gap-8 sm:gap-16">
+        {[
+          { name: 'Astro', color: '#FF5D01' },
+          { name: 'TailwindCSS', color: '#38BDF8' },
+          { name: 'JavaScript', color: '#F7DF1E' },
+          { name: 'PokéAPI', color: '#EF5350' },
+          { name: 'HTML5', color: '#E34F26' },
+        ].map(tech => (
+          <div class="flex flex-col items-center gap-2">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center" 
+                 style={`background: ${tech.color}22; border: 1px solid ${tech.color}44`}>
+              <div class="w-3 h-3 rounded-full" style={`background: ${tech.color}`}></div>
+            </div>
+            <span class="text-white/40 text-xs font-body">{tech.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>

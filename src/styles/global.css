@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Sans:wght@300;400;500;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-poke-dark: #0D0D0D;
+  --color-poke-card: #1A1A2E;
+  --color-poke-accent: #FFD600;
+  --color-poke-red: #FF1744;
+  --color-poke-blue: #00B0FF;
+  --color-poke-purple: #AA00FF;
+  --color-poke-green: #00E676;
+  --color-poke-gray: #2A2A3E;
+
+  --font-display: "Press Start 2P", monospace;
+  --font-body: "DM Sans", sans-serif;
+
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-pulse-glow: pulseGlow 2s ease-in-out infinite;
+  --animate-slide-in: slideIn 0.4s ease-out;
+  --animate-bounce-in: bounceIn 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  --animate-spin-slow: spin 8s linear infinite;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-poke-dark text-white font-body;
+    background-image: 
+      radial-gradient(ellipse at 0% 0%, rgba(255,23,68,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 100% 100%, rgba(0,176,255,0.06) 0%, transparent 60%);
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0D0D0D; }
+  ::-webkit-scrollbar-thumb { background: #FF1744; border-radius: 3px; }
+}
+
+@layer components {
+  .poke-card {
+    @apply bg-poke-card border border-white/10 rounded-2xl p-4 transition-all duration-300;
+    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 100%);
+  }
+
+  .poke-card:hover {
+    @apply border-poke-accent/40 -translate-y-1;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 20px rgba(255,215,0,0.1);
+  }
+
+  .poke-btn {
+    @apply font-display text-xs py-3 px-6 rounded-xl transition-all duration-200 cursor-pointer;
+  }
+
+  .poke-btn-primary {
+    @apply font-display text-xs py-3 px-6 rounded-xl transition-all duration-200 cursor-pointer bg-poke-red text-white hover:bg-red-600 active:scale-95;
+    box-shadow: 0 4px 15px rgba(255,23,68,0.4);
+  }
+
+  .poke-btn-secondary {
+    @apply font-display text-xs py-3 px-6 rounded-xl transition-all duration-200 cursor-pointer bg-poke-gray text-poke-accent border border-poke-accent/30 hover:border-poke-accent;
+  }
+
+  .type-badge {
+    @apply text-xs px-3 py-1 rounded-full font-body font-medium uppercase tracking-wider;
+  }
+
+  .page-header {
+    @apply font-display text-poke-accent mb-2;
+    text-shadow: 0 0 30px rgba(255,215,0,0.5);
+  }
+
+  .nav-link {
+    @apply font-body text-sm text-white/60 hover:text-poke-accent transition-colors duration-200 relative;
+  }
+
+  .nav-link.active { @apply text-poke-accent; }
+
+  .nav-link::after {
+    content: '';
+    @apply absolute -bottom-1 left-0 w-0 h-0.5 bg-poke-accent transition-all duration-200;
+  }
+
+  .nav-link:hover::after, .nav-link.active::after { @apply w-full; }
+}
+
+.pokeball-bg {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,215,0,0.05);
+  pointer-events: none;
+}
+
+.type-fire { background: linear-gradient(135deg, #ff6b35, #f7931e); color: #fff; }
+.type-water { background: linear-gradient(135deg, #4fc3f7, #0288d1); color: #fff; }
+.type-grass { background: linear-gradient(135deg, #81c784, #388e3c); color: #fff; }
+.type-electric { background: linear-gradient(135deg, #ffd54f, #f57f17); color: #000; }
+.type-psychic { background: linear-gradient(135deg, #f48fb1, #c2185b); color: #fff; }
+.type-ice { background: linear-gradient(135deg, #80deea, #00838f); color: #fff; }
+.type-dragon { background: linear-gradient(135deg, #9575cd, #4527a0); color: #fff; }
+.type-dark { background: linear-gradient(135deg, #616161, #212121); color: #fff; }
+.type-fairy { background: linear-gradient(135deg, #f8bbd0, #c2185b); color: #fff; }
+.type-fighting { background: linear-gradient(135deg, #ff8a65, #bf360c); color: #fff; }
+.type-poison { background: linear-gradient(135deg, #ce93d8, #6a1b9a); color: #fff; }
+.type-ground { background: linear-gradient(135deg, #ffcc80, #e65100); color: #fff; }
+.type-flying { background: linear-gradient(135deg, #b3e5fc, #01579b); color: #fff; }
+.type-bug { background: linear-gradient(135deg, #dce775, #827717); color: #fff; }
+.type-rock { background: linear-gradient(135deg, #bcaaa4, #4e342e); color: #fff; }
+.type-ghost { background: linear-gradient(135deg, #9575cd, #311b92); color: #fff; }
+.type-steel { background: linear-gradient(135deg, #b0bec5, #455a64); color: #fff; }
+.type-normal { background: linear-gradient(135deg, #eeeeee, #9e9e9e); color: #000; }
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #1A1A2E 0%, #2A2A3E 50%, #1A1A2E 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.3); }
+  50% { box-shadow: 0 0 40px rgba(255,215,0,0.8); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}

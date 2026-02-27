@@ -1,0 +1,312 @@
+---
+export const prerender = false;
+import Layout from '../../layouts/Layout.astro';
+
+const { id } = Astro.params;
+---
+
+<Layout title={`Pokémon #${id}`}>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+    <a href="/pokemon" class="inline-flex items-center gap-2 text-white/40 hover:text-poke-accent text-sm font-body mb-8 transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Volver a la Pokédex
+    </a>
+
+    <!-- Axios request log visible en UI -->
+    <div id="request-log" class="hidden mb-6 px-4 py-3 rounded-xl bg-poke-gray border border-white/5 font-mono text-xs space-y-1">
+      <div class="text-poke-accent font-bold mb-2">📡 Axios — Peticiones HTTP</div>
+      <div id="log-lines" class="space-y-0.5 text-white/50 max-h-32 overflow-y-auto"></div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="flex items-center justify-center py-32">
+      <div class="text-center">
+        <div class="w-16 h-16 border-4 border-poke-red border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-white/40 font-body text-sm">Conectando con PokeAPI vía Axios…</p>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="content" class="hidden animate-slide-in">
+      <div class="grid lg:grid-cols-2 gap-10 mb-10">
+
+        <!-- Image card -->
+        <div id="image-card" class="poke-card relative overflow-hidden min-h-[300px] flex items-center justify-center">
+          <div id="type-bg" class="absolute inset-0 opacity-10"></div>
+          <div class="relative z-10 text-center">
+            <div class="text-white/20 font-display text-xs mb-4" id="pokemon-number"></div>
+            <img id="pokemon-img" src="" alt="" class="w-48 h-48 object-contain mx-auto animate-float drop-shadow-2xl"/>
+            <h1 id="pokemon-name" class="font-display text-xl sm:text-2xl text-white mt-4 capitalize"></h1>
+            <div id="pokemon-types" class="flex gap-2 justify-center mt-3"></div>
+          </div>
+          <button id="fav-btn"
+            class="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all hover:scale-110 bg-white/5 border border-white/10 hover:border-poke-accent/40">☆</button>
+        </div>
+
+        <!-- Info -->
+        <div class="flex flex-col gap-4">
+          <div class="poke-card">
+            <h2 class="font-display text-xs text-poke-accent mb-4">Información Básica</h2>
+            <div class="grid grid-cols-2 gap-3" id="basic-info"></div>
+          </div>
+          <div class="poke-card">
+            <h2 class="font-display text-xs text-poke-accent mb-4">Habilidades</h2>
+            <div id="abilities" class="flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="poke-card mb-6">
+        <h2 class="font-display text-xs text-poke-accent mb-6">Estadísticas Base</h2>
+        <div id="stats" class="flex flex-col gap-3"></div>
+      </div>
+
+      <!-- Moves -->
+      <div class="poke-card mb-6">
+        <h2 class="font-display text-xs text-poke-accent mb-4">Movimientos <span class="text-white/20 font-body font-normal text-xs">(primeros 20)</span></h2>
+        <div id="moves" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="flex items-center justify-between mt-8">
+        <button id="prev-poke" class="poke-btn-secondary flex items-center gap-2">
+          <span>←</span><span id="prev-name" class="capitalize"></span>
+        </button>
+        <button id="next-poke" class="poke-btn-secondary flex items-center gap-2">
+          <span id="next-name" class="capitalize"></span><span>→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<!-- Axios desde CDN -->
+<script src="https://cdn.jsdelivr.net/npm/axios@1.7.0/dist/axios.min.js"></script>
+
+<script define:vars={{ id }}>
+  // ─── Axios instance con interceptores ──────────────────────
+  const BASE_URL = 'https://pokeapi.co/api/v2';
+
+  const logLines = document.getElementById('log-lines');
+  const requestLog = document.getElementById('request-log');
+
+  function addLog(msg, color = '#ffffff80') {
+    requestLog.classList.remove('hidden');
+    const d = document.createElement('div');
+    d.style.color = color;
+    d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    logLines.appendChild(d);
+    logLines.scrollTop = logLines.scrollHeight;
+  }
+
+  function buildAxios() {
+    const http = window.axios.create({
+      baseURL: BASE_URL,
+      timeout: 12000,
+      headers: { Accept: 'application/json' },
+    });
+
+    http.interceptors.request.use(config => {
+      const endpoint = config.url.startsWith('http') ? config.url : BASE_URL + config.url;
+      addLog(`→ GET ${endpoint}`, '#FFD600');
+      console.groupCollapsed(`%c🌐 [Axios → PokeAPI] GET ${endpoint}`, 'color:#FFD600;font-weight:bold');
+      console.log('Params:', config.params ?? 'ninguno');
+      console.log('Timeout:', config.timeout + 'ms');
+      console.groupEnd();
+      return config;
+    }, err => {
+      addLog(`✗ Request error: ${err.message}`, '#FF1744');
+      return Promise.reject(err);
+    });
+
+    http.interceptors.response.use(response => {
+      addLog(`← ${response.status} OK  ${response.config.url}`, '#00E676');
+      console.groupCollapsed(`%c✅ [Axios ← PokeAPI] ${response.status} ${response.config.url}`, 'color:#00E676;font-weight:bold');
+      console.log('Datos:', response.data);
+      console.groupEnd();
+      return response;
+    }, err => {
+      const status = err.response?.status ?? 'ERR';
+      addLog(`← ${status} ERROR  ${err.config?.url ?? ''}`, '#FF1744');
+      console.group(`%c❌ [Axios] Error ${status}`, 'color:#FF1744;font-weight:bold');
+      console.error(err.message);
+      console.groupEnd();
+      return Promise.reject(err);
+    });
+
+    return http;
+  }
+
+  // ─── Constantes ────────────────────────────────────────────
+  const STAT_COLORS = {
+    hp: '#FF5252', attack: '#FF6D00', defense: '#FFD600',
+    'special-attack': '#AA00FF', 'special-defense': '#00B0FF', speed: '#00E676',
+  };
+  const TYPE_COLORS = {
+    fire:'#ff6b35', water:'#4fc3f7', grass:'#81c784', electric:'#ffd54f',
+    psychic:'#f48fb1', ice:'#80deea', dragon:'#9575cd', dark:'#616161',
+    fairy:'#f8bbd0', fighting:'#ff8a65', poison:'#ce93d8', ground:'#ffcc80',
+    flying:'#b3e5fc', bug:'#dce775', rock:'#bcaaa4', ghost:'#9575cd',
+    steel:'#b0bec5', normal:'#eeeeee',
+  };
+  const STAT_NAMES = {
+    hp:'HP', attack:'Ataque', defense:'Defensa',
+    'special-attack':'Ataque Esp.', 'special-defense':'Defensa Esp.', speed:'Velocidad',
+  };
+
+  function getFavorites() {
+    try { return JSON.parse(localStorage.getItem('pokemon-favorites') || '[]'); }
+    catch { return []; }
+  }
+  function pad(n) { return String(n).padStart(4, '0'); }
+
+  async function load() {
+    addLog(`Iniciando carga del Pokémon #${id}…`, '#00B0FF');
+
+    const http = buildAxios();
+
+    try {
+      // ── Petición 1 y 2 en paralelo con Axios ───────────────
+      addLog('Lanzando 2 peticiones en paralelo (pokemon + species)…', '#AA00FF');
+
+      const [pokeRes, speciesRes] = await Promise.allSettled([
+        http.get(`/pokemon/${id}`),
+        http.get(`/pokemon-species/${id}`),
+      ]);
+
+      const poke    = pokeRes.status    === 'fulfilled' ? pokeRes.value.data    : null;
+      const species = speciesRes.status === 'fulfilled' ? speciesRes.value.data : null;
+
+      if (!poke) throw new Error(`No se encontró el Pokémon #${id}`);
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('content').classList.remove('hidden');
+      document.title = `${poke.name.charAt(0).toUpperCase() + poke.name.slice(1)} | PokéDex`;
+
+      // ── Imagen y nombre ─────────────────────────────────────
+      const img = document.getElementById('pokemon-img');
+      img.src = poke.sprites.other['official-artwork'].front_default || poke.sprites.front_default;
+      img.alt = poke.name;
+      document.getElementById('pokemon-name').textContent = poke.name;
+      document.getElementById('pokemon-number').textContent = `#${pad(poke.id)}`;
+
+      const mainType  = poke.types[0].type.name;
+      const typeColor = TYPE_COLORS[mainType] || '#9e9e9e';
+      document.getElementById('type-bg').style.background =
+        `radial-gradient(circle at 50% 50%, ${typeColor} 0%, transparent 70%)`;
+
+      document.getElementById('pokemon-types').innerHTML =
+        poke.types.map(t => `<span class="type-badge type-${t.type.name}">${t.type.name}</span>`).join('');
+
+      // ── Info básica ─────────────────────────────────────────
+      const flavorEntry = species?.flavor_text_entries?.find(e => e.language.name === 'es')
+                       || species?.flavor_text_entries?.find(e => e.language.name === 'en');
+
+      const infoEl = document.getElementById('basic-info');
+      const infoData = [
+        { label:'Peso',        value:`${(poke.weight/10).toFixed(1)} kg` },
+        { label:'Altura',      value:`${(poke.height/10).toFixed(1)} m`  },
+        { label:'Exp. Base',   value: poke.base_experience || 'N/A'      },
+        { label:'Felicidad',   value: species?.base_happiness ?? 'N/A'   },
+        { label:'Tasa Cap.',   value: species?.capture_rate   ?? 'N/A'   },
+        { label:'Generación',  value: species?.generation?.name?.replace('generation-','Gen ').toUpperCase() ?? 'N/A' },
+      ];
+      infoEl.innerHTML = infoData.map(i => `
+        <div class="bg-poke-dark/50 rounded-xl p-3">
+          <div class="text-white/30 text-xs font-body mb-1">${i.label}</div>
+          <div class="text-white font-body font-medium text-sm">${i.value}</div>
+        </div>`).join('');
+
+      if (flavorEntry) {
+        infoEl.innerHTML += `
+          <div class="col-span-2 bg-poke-dark/50 rounded-xl p-3">
+            <div class="text-white/30 text-xs font-body mb-1">Descripción</div>
+            <div class="text-white/70 font-body text-sm leading-relaxed">${flavorEntry.flavor_text.replace(/\f/g,' ')}</div>
+          </div>`;
+      }
+
+      // ── Habilidades ─────────────────────────────────────────
+      document.getElementById('abilities').innerHTML = poke.abilities.map(a => `
+        <span class="bg-poke-dark/50 border border-white/10 rounded-xl px-3 py-2 text-sm font-body capitalize text-white/80">
+          ${a.ability.name.replace(/-/g,' ')}${a.is_hidden ? ' <span class="text-xs opacity-50">(Oculta)</span>':''}
+        </span>`).join('');
+
+      // ── Stats ───────────────────────────────────────────────
+      document.getElementById('stats').innerHTML = poke.stats.map(s => {
+        const color = STAT_COLORS[s.stat.name] || '#fff';
+        const pct   = Math.min(100, (s.base_stat/255)*100);
+        return `
+          <div class="flex items-center gap-4">
+            <div class="text-white/40 text-xs font-body w-28 text-right shrink-0">${STAT_NAMES[s.stat.name] || s.stat.name}</div>
+            <div class="font-body font-medium text-sm w-10 text-center shrink-0" style="color:${color}">${s.base_stat}</div>
+            <div class="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-1000"
+                   style="width:${pct}%;background:${color};box-shadow:0 0 8px ${color}60"></div>
+            </div>
+          </div>`;
+      }).join('');
+
+      // ── Movimientos ─────────────────────────────────────────
+      document.getElementById('moves').innerHTML = poke.moves.slice(0,20).map(m => `
+        <span class="bg-poke-dark/60 border border-white/5 rounded-lg px-3 py-1.5 text-xs font-body capitalize text-white/60 hover:text-white hover:border-white/20 transition-colors">
+          ${m.move.name.replace(/-/g,' ')}
+        </span>`).join('');
+
+      // ── Favorito ────────────────────────────────────────────
+      const favBtn = document.getElementById('fav-btn');
+      if (getFavorites().includes(poke.id)) favBtn.textContent = '⭐';
+      favBtn.addEventListener('click', () => {
+        const favs = getFavorites();
+        const idx  = favs.indexOf(poke.id);
+        if (idx === -1) { favs.push(poke.id); favBtn.textContent = '⭐'; }
+        else            { favs.splice(idx,1); favBtn.textContent = '☆'; }
+        localStorage.setItem('pokemon-favorites', JSON.stringify(favs));
+      });
+
+      // ── Navegación prev/next (peticiones 3 y 4 con Axios) ───
+      const pokeId = parseInt(id);
+      const prevBtn = document.getElementById('prev-poke');
+      const nextBtn = document.getElementById('next-poke');
+
+      if (pokeId > 1) {
+        http.get(`/pokemon/${pokeId - 1}`)
+          .then(r => {
+            document.getElementById('prev-name').textContent = r.data.name;
+            prevBtn.addEventListener('click', () => window.location.href = `/pokemon/${pokeId - 1}`);
+          }).catch(() => { prevBtn.style.opacity = '0.3'; prevBtn.disabled = true; });
+      } else {
+        prevBtn.style.opacity = '0.3'; prevBtn.disabled = true;
+      }
+
+      http.get(`/pokemon/${pokeId + 1}`)
+        .then(r => {
+          document.getElementById('next-name').textContent = r.data.name;
+          nextBtn.addEventListener('click', () => window.location.href = `/pokemon/${pokeId + 1}`);
+        }).catch(() => { nextBtn.style.opacity = '0.3'; nextBtn.disabled = true; });
+
+      addLog('✓ Datos cargados exitosamente', '#00E676');
+
+    } catch (err) {
+      addLog(`✗ Error fatal: ${err.message}`, '#FF1744');
+      document.getElementById('loading').innerHTML = `
+        <div class="text-center">
+          <div class="text-5xl mb-4">💔</div>
+          <p class="font-display text-xs text-poke-red mb-2">Pokémon no encontrado</p>
+          <p class="text-white/40 text-sm font-body mb-6">El ID #${id} no existe o hubo un error de red.</p>
+          <a href="/pokemon" class="poke-btn-primary">Volver a la Pokédex</a>
+        </div>`;
+    }
+  }
+
+  function waitForAxios(cb, retries = 20) {
+    if (window.axios) cb();
+    else if (retries > 0) setTimeout(() => waitForAxios(cb, retries - 1), 100);
+    else cb();
+  }
+
+  waitForAxios(load);
+</script>
