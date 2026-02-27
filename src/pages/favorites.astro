@@ -1,0 +1,150 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Favoritos">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="page-header text-2xl sm:text-3xl">Favoritos</h1>
+        <p id="count-text" class="text-white/40 font-body text-sm">Cargando…</p>
+      </div>
+      <button id="clear-btn" class="poke-btn-secondary text-poke-red border-poke-red/30 hover:border-poke-red hidden">
+        🗑️ Limpiar todo
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      {Array(6).fill(0).map(() => <div class="skeleton rounded-2xl h-48"></div>)}
+    </div>
+
+    <!-- Empty -->
+    <div id="empty" class="hidden py-32 text-center">
+      <div class="text-8xl mb-6 opacity-30">⭐</div>
+      <h2 class="font-display text-sm text-white/40 mb-3">Sin favoritos aún</h2>
+      <p class="text-white/30 font-body mb-8">Agrega Pokémon desde la Pokédex.</p>
+      <a href="/pokemon" class="poke-btn-primary">Explorar Pokédex</a>
+    </div>
+
+    <!-- Grid -->
+    <div id="pokemon-grid" class="hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"></div>
+  </div>
+</Layout>
+
+<script src="https://cdn.jsdelivr.net/npm/axios@1.7.0/dist/axios.min.js"></script>
+
+<script>
+  const TYPE_COLORS = {
+    fire:'#ff6b35', water:'#4fc3f7', grass:'#81c784', electric:'#ffd54f',
+    psychic:'#f48fb1', ice:'#80deea', dragon:'#9575cd', dark:'#616161',
+    fairy:'#f8bbd0', fighting:'#ff8a65', poison:'#ce93d8', ground:'#ffcc80',
+    flying:'#b3e5fc', bug:'#dce775', rock:'#bcaaa4', ghost:'#9575cd',
+    steel:'#b0bec5', normal:'#eeeeee',
+  };
+
+  function getFavorites() {
+    try { return JSON.parse(localStorage.getItem('pokemon-favorites') || '[]'); }
+    catch { return []; }
+  }
+  function pad(n) { return String(n).padStart(4,'0'); }
+
+  function removeFromFav(id) {
+    const favs = getFavorites().filter(f => f !== id);
+    localStorage.setItem('pokemon-favorites', JSON.stringify(favs));
+    loadFavorites();
+  }
+  window.removeFromFav = removeFromFav;
+
+  function createCard(p) {
+    const tc = TYPE_COLORS[p.types[0]?.type?.name] || '#9e9e9e';
+    return `
+      <div class="poke-card group relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10 pointer-events-none"
+             style="background:radial-gradient(circle,${tc} 0%,transparent 70%)"></div>
+        <button onclick="removeFromFav(${p.id})"
+          class="absolute top-2 right-2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-poke-red/10 text-poke-red text-xs hover:bg-poke-red/30 transition-all opacity-0 group-hover:opacity-100">✕</button>
+        <a href="/pokemon/${p.id}" class="flex flex-col items-center">
+          <div class="text-white/20 font-display text-[9px] self-start mb-2">#${pad(p.id)}</div>
+          <div class="relative w-20 h-20 flex items-center justify-center mb-2">
+            <div class="absolute inset-0 rounded-full opacity-20" style="background:radial-gradient(${tc},transparent)"></div>
+            <img src="${p.sprites.other['official-artwork'].front_default || p.sprites.front_default}"
+              alt="${p.name}" class="w-16 h-16 object-contain z-10 group-hover:scale-110 transition-transform duration-300"/>
+          </div>
+          <div class="font-body font-medium text-xs text-white capitalize text-center mb-2">${p.name}</div>
+          <div class="flex gap-1 flex-wrap justify-center">
+            ${p.types.map(t=>`<span class="type-badge type-${t.type.name} text-[9px] px-2 py-0.5">${t.type.name}</span>`).join('')}
+          </div>
+        </a>
+      </div>`;
+  }
+
+  async function loadFavorites() {
+    const loadingEl = document.getElementById('loading');
+    const emptyEl   = document.getElementById('empty');
+    const gridEl    = document.getElementById('pokemon-grid');
+    const countText = document.getElementById('count-text');
+    const clearBtn  = document.getElementById('clear-btn');
+
+    const favs = getFavorites();
+
+    if (favs.length === 0) {
+      loadingEl.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+      gridEl.classList.add('hidden');
+      countText.textContent = '0 Pokémon guardados';
+      clearBtn.classList.add('hidden');
+      return;
+    }
+
+    // Axios instance para favoritos
+    const http = window.axios.create({
+      baseURL: 'https://pokeapi.co/api/v2',
+      timeout: 12000,
+    });
+
+    http.interceptors.request.use(cfg => {
+      console.log(`%c🌐 [Axios-Favs] GET ${cfg.url}`, 'color:#FFD600');
+      return cfg;
+    });
+    http.interceptors.response.use(res => {
+      console.log(`%c✅ [Axios-Favs] ${res.status} ${res.config.url}`, 'color:#00E676');
+      return res;
+    }, err => {
+      console.error(`%c❌ [Axios-Favs] ${err.response?.status ?? 'ERR'} ${err.config?.url}`, 'color:#FF1744');
+      return Promise.reject(err);
+    });
+
+    try {
+      const results = await Promise.allSettled(
+        favs.map(id => http.get(`/pokemon/${id}`).then(r => r.data))
+      );
+      const pokemons = results
+        .filter(r => r.status === 'fulfilled')
+        .map(r => r.value);
+
+      loadingEl.classList.add('hidden');
+      emptyEl.classList.add('hidden');
+      gridEl.classList.remove('hidden');
+      gridEl.innerHTML = pokemons.map(createCard).join('');
+      countText.textContent = `${pokemons.length} Pokémon guardado${pokemons.length!==1?'s':''}`;
+      clearBtn.classList.remove('hidden');
+    } catch {
+      loadingEl.innerHTML = '<div class="col-span-full text-center py-12 text-white/40 font-body">Error cargando favoritos.</div>';
+    }
+  }
+
+  document.getElementById('clear-btn')?.addEventListener('click', () => {
+    if (confirm('¿Limpiar todos los favoritos?')) {
+      localStorage.removeItem('pokemon-favorites');
+      loadFavorites();
+    }
+  });
+
+  function waitForAxios(cb, retries = 20) {
+    if (window.axios) cb();
+    else if (retries > 0) setTimeout(() => waitForAxios(cb, retries - 1), 100);
+  }
+  waitForAxios(loadFavorites);
+</script>

@@ -1,26 +1,115 @@
 ---
-import '../styles/global.css' 
----
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
-	</head>
-	<body>
-		<slot />
-	</body>
-</html>
+import '../styles/global.css';
 
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
-</style>
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Pokédex App - Explora el mundo Pokémon' } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+const navLinks = [
+  { href: '/', label: 'Inicio', icon: '🏠' },
+  { href: '/pokemon', label: 'Pokédex', icon: '📖' },
+  { href: '/favorites', label: 'Favoritos', icon: '⭐' },
+  { href: '/ejercicios1al10', label: 'Ejercicios1 al 10', icon: '💻' },
+  { href: 'ejercicios11al20', label: 'Ejercicios11 al 20', icon: '💻' },
+];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} | PokéDex App</title>
+  </head>
+  <body class="min-h-screen flex flex-col">
+    
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 border-b border-white/5" style="background: rgba(13,13,13,0.95); backdrop-filter: blur(20px);">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          
+          <!-- Logo -->
+          <a href="/" class="flex items-center gap-3 group">
+            <div class="relative w-9 h-9">
+              <div class="w-9 h-9 rounded-full bg-poke-red border-2 border-white/20 group-hover:border-poke-accent transition-colors overflow-hidden">
+                <div class="w-full h-1/2 bg-poke-red"></div>
+                <div class="w-full h-px bg-white/30"></div>
+                <div class="w-full h-1/2 bg-white/10"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-white border-2 border-poke-dark"></div>
+                </div>
+              </div>
+            </div>
+            <span class="font-display text-xs text-poke-accent hidden sm:block">PokéDex</span>
+          </a>
+
+          <!-- Desktop Nav -->
+          <div class="hidden md:flex items-center gap-8">
+            {navLinks.map(link => (
+              <a 
+                href={link.href} 
+                class={`nav-link ${currentPath === link.href || (link.href !== '/' && currentPath.startsWith(link.href)) ? 'active' : ''}`}
+              >
+                <span class="mr-1">{link.icon}</span>
+                {link.label}
+              </a>
+            ))}
+          </div>
+
+          <!-- Mobile menu button -->
+          <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Nav -->
+      <div id="mobile-menu" class="hidden md:hidden border-t border-white/5 bg-poke-dark/95">
+        <div class="px-4 py-3 flex flex-col gap-1">
+          {navLinks.map(link => (
+            <a 
+              href={link.href} 
+              class={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${currentPath === link.href || (link.href !== '/' && currentPath.startsWith(link.href)) ? 'bg-poke-accent/10 text-poke-accent' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+            >
+              <span>{link.icon}</span>
+              {link.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="flex-1">
+      <slot />
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 mt-16">
+      <div class="max-w-7xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-white/30 text-sm font-body">Hecho con</span>
+          <span class="text-poke-red">❤️</span>
+          <span class="text-white/30 text-sm font-body">usando Astro + TailwindCSS</span>
+        </div>
+        <div class="text-white/20 text-xs font-body">
+          Datos de <a href="https://pokeapi.co" target="_blank" class="text-poke-blue hover:underline">PokéAPI</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const btn = document.getElementById('mobile-menu-btn');
+      const menu = document.getElementById('mobile-menu');
+      btn?.addEventListener('click', () => menu?.classList.toggle('hidden'));
+    </script>
+  </body>
+</html>
